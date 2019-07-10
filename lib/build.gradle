@@ -1,0 +1,181 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'maven-publish'
+apply plugin: 'org.ajoberstar.grgit'
+apply plugin: 'jacoco'
+
+jacoco {
+    toolVersion = "0.7.6.201602180812"
+    reportsDir = file("$buildDir")
+}
+
+task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+
+    def excludes = [
+            '**/R.class',
+            '**/R$*.class',
+            '**/BuildConfig.*',
+            '**/Manifest*.*',
+    ]
+
+    def kotlinDebugTree = fileTree(dir: "${buildDir}/tmp/kotlin-classes/debug", excludes: excludes)
+    def mainSrc = "${project.projectDir}/src/test/kotlin"
+
+    sourceDirectories = files([mainSrc])
+    classDirectories = files([kotlinDebugTree])
+    executionData = fileTree(dir: "$buildDir", includes: [
+            "jacoco/testDebugUnitTest.exec"
+    ])
+}
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
+
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0.0-SNAPSHOT"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        setProperty("archivesBaseName", "${archivesBaseName}-${versionName}")
+        consumerProguardFiles 'proguard-rules.pro'
+    }
+
+    sourceSets{
+        androidTest.java.srcDirs += 'src/androidTest/kotlin'
+        main.java.srcDirs += 'src/main/kotlin'
+        test.java.srcDirs += 'src/test/kotlin'
+    }
+
+}
+
+ext {
+    artifactoryHosts = [
+            matthewscorpRepository: 'https://repository.matthewscorp.com/artifactory',
+            localRepository: 'http://localhost:8081/artifactory'
+    ]
+
+    artifactoryRepoKeys = [
+            release : 'matthewscorpapps-release-local',
+            snapshot: 'matthewscorpapps-snapshot-local'
+    ]
+
+    artifactoryHost = artifactoryHosts.matthewscorpRepository
+}
+
+repositories {
+    jcenter()
+    google()
+    mavenCentral()
+    maven {
+        url artifactoryHosts.matthewscorpRepository + "/" + artifactoryRepoKeys.release
+    }
+    maven {
+        url artifactoryHosts.matthewscorpRepository + "/" + artifactoryRepoKeys.snapshot
+    }
+    mavenLocal()
+}
+
+tasks.withType(Test) {
+    testLogging { events 'passed', 'skipped', 'failed'}
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    androidTestImplementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    api "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+}
+
+publishing {
+    publications {
+        aar(MavenPublication) {
+            groupId = 'com.matthewscorp.android'
+            artifactId project.name
+            version = android.defaultConfig.versionName
+            artifact "$project.buildDir/outputs/aar/$archivesBaseName-release.aar"
+            println"Publishing to Artifactory"
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                configurations.implementation.allDependencies.each {
+                    if (!("unspecified".equalsIgnoreCase(it.name))) {
+                        println"Publishing to Artifactory1"
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+task checkGit {
+    doLast {
+        def status = grgit.status()
+        if (!status.isClean()) {
+            throw new GradleException("There are uncommitted files")
+        }
+
+        def currentBranch = grgit.branch.getCurrent()
+        def currentBranchName = currentBranch.getName()
+        println "Current branch is ${currentBranchName}"
+
+        def trackingBranch = currentBranch.trackingBranch
+        if (trackingBranch == null) {
+            throw new GradleException("Push current branch ${currentBranchName}\nor set upstream branch")
+        }
+        def trackingBranchName = trackingBranch.getName()
+        def log = grgit.log {
+            range trackingBranchName, currentBranchName
+        }
+        if (log.size() > 0) {
+            throw new GradleException("There are unpushed commits")
+        }
+    }
+}
+
+task tagRelease {
+    description = 'Tags the current head with the project\'s version.'
+    doLast {
+        grgit.tag.add {
+            name = android.defaultConfig.versionName
+            message = "Version ${android.defaultConfig.versionName}"
+        }
+    }
+}
+
+afterEvaluate {
+    // Note: Determines snapshot or release repo destination from the android versionName
+    artifactory {
+        contextUrl = artifactoryHost
+        publish {
+            repository {
+                repoKey = android.defaultConfig.versionName.endsWith('SNAPSHOT') ? artifactoryRepoKeys.snapshot : artifactoryRepoKeys.release
+                username = "${artifactory_user}"
+                password = "${artifactory_password}"
+            }
+        }
+    }
+    artifactoryPublish {
+        publications('aar')
+    }
+//    assembleRelease.dependsOn testReleaseUnitTest
+//    tagRelease.dependsOn assembleRelease, checkGit
+//    artifactoryPublish.dependsOn tagRelease
+}
