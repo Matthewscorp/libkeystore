@@ -86,6 +86,16 @@ class MainActivity : AppCompatActivity() {
         decryptedText.setText(LibKeyStore.decryptString(alias, encryptedText.text.toString(), IV))
     }
 
+    fun removeCredentials() {
+        (application as MainApplication).bearerToke = null
+        Credentials.removeCredentials(applicationContext)
+    }
+
+    fun saveCredentials(username: String, pwd: String) {
+        //(application as MainApplication).bearerToke = some token
+        Credentials.saveCredentials(applicationContext, username, pwd, Credentials.ACCESS_TYPE_EMAIL)
+    }
+
     inner class KeyRecyclerAdapter internal constructor(context: Context, textView: Int) : ArrayAdapter<String>(context, textView) {
 
         override fun getCount(): Int {
@@ -101,12 +111,16 @@ class MainActivity : AppCompatActivity() {
 
             val keyAlias = itemView?.findViewById<TextView>(R.id.keyAlias)
             keyAlias?.text = keyAliases[position]
+
             val encryptButton = itemView?.findViewById<Button>(R.id.encryptButton)
             encryptButton?.setOnClickListener { encryptString(keyAlias?.text.toString()) }
+
             val decryptButton = itemView?.findViewById<Button>(R.id.decryptButton)
             decryptButton?.setOnClickListener { decryptString(keyAlias?.text.toString()) }
+
             val deleteButton = itemView?.findViewById<Button>(R.id.deleteButton)
             deleteButton?.setOnClickListener { deleteKey(keyAlias?.text.toString()) }
+
             return itemView!!
         }
 
@@ -115,4 +129,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+
+
+
 }
