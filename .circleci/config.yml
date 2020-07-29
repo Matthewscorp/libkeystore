@@ -9,5 +9,7 @@ jobs:
         
     steps:
       - checkout
+      - run 
+          command: git update-index --chmod=+x gradlew
       - run:
           command: ./gradlew build
