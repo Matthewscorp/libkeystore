@@ -9,7 +9,7 @@ workflows:
     jobs:
       - build:
           post-steps:
-            - jira/notify # Runs the Jira's "notify" commands after a build has finished its steps.
+            - jira/notify # Runs the Jira's "notify" commands after a build has finished its steps123.
 
 jobs:
   build:
