@@ -1,11 +1,11 @@
 version: 2.1
 
 orbs:
+ jira: circleci/jira@1.2.2
  android: circleci/android@0.2.0
 
 jobs:
   build:
-    jira: circleci/jira@1.2.2
     executor: android/android
         
     steps:
