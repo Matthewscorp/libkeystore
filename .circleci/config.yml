@@ -5,6 +5,7 @@ orbs:
 
 jobs:
   build:
+    jira: circleci/jira@1.2.2
     executor: android/android
         
     steps:
@@ -14,3 +15,4 @@ jobs:
           command: chmod +x ./gradlew
       - run:
           command: ./gradlew build
+      - jira/notify
