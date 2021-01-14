@@ -18,7 +18,7 @@ jobs:
       - jira/notify
       - run:
           name: Download appcenter
-          command: sudo npm install appcenter-cli -g
+          command: npm install appcenter-cli -g
           #cli appcenter token 7a0b040a097d4cf8b3bdd8a4f8329b5d687d2c63
       - run:
           name: Deliver to appcenter
