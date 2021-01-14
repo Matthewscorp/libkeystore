@@ -2,11 +2,16 @@ version: 2.1
 
 orbs:
  jira: circleci/jira@1.2.2
- android: circleci/android@0.2.0
+ #android: circleci/android@0.2.0
+
+executores:
+  ks-xecutor:
+    docker:
+      - image: circleci/android:api-29-node
 
 jobs:
   build:
-    executor: android/android
+    executor: ks-xecutor
         
     steps:
       - checkout
