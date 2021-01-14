@@ -4,7 +4,7 @@ orbs:
  jira: circleci/jira@1.2.2
  #android: circleci/android@0.2.0
 
-executores:
+executors:
   ks-xecutor:
     docker:
       - image: circleci/android:api-29-node
